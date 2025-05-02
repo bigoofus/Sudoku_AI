@@ -1,4 +1,19 @@
 import tkinter as tk
+import sys
+from tkinter import scrolledtext  # Import for the log window
+from backend import SudokuCSP  # Adjust the import if the backend is named differently
+
+class LogStream:
+    def __init__(self, log_widget):
+        self.log_widget = log_widget
+
+    def write(self, message):
+        # Insert message into the log widget and auto-scroll to the latest message
+        self.log_widget.insert(tk.END, message)
+        self.log_widget.yview(tk.END)
+
+    def flush(self):
+        pass  # Needed to avoid any errors when flushing the stream
 
 class SudokuGUI:
     def __init__(self, root):
@@ -22,6 +37,13 @@ class SudokuGUI:
         tk.Button(button_frame, text="Mode 1: Solve Example", command=self.solve_example).grid(row=0, column=0, padx=10)
         tk.Button(button_frame, text="Mode 2: Solve User Input", command=self.solve_user_input).grid(row=0, column=1, padx=10)
         tk.Button(button_frame, text="Clear Board", command=self.clear_board).grid(row=0, column=2, padx=10)
+
+        # Log window
+        self.log_window = None  # To store reference to the log window
+        self.create_log_window()
+
+        # Redirect stdout to capture prints
+        sys.stdout = LogStream(self.log_text)
 
     def draw_grid(self):
         for i in range(10):
@@ -65,23 +87,39 @@ class SudokuGUI:
             [0, 0, 0, 4, 1, 9, 0, 0, 5],
             [0, 0, 0, 0, 8, 0, 0, 7, 9]
         ]
+
         for i in range(9):
             for j in range(9):
-                if puzzle[i][j] != 0:
+                val = puzzle[i][j]
+                if val != 0:
                     entry = self.entries[i][j]
-                    entry.insert(0, str(puzzle[i][j]))
+                    entry.insert(0, str(val))
                     entry.config(state='disabled', disabledforeground='black', font=('Arial', 24, 'bold'))
 
-        # === PLACEHOLDER: Call your backend AI solve method here ===
-        # Example: self.backend.solve(puzzle)
-        # Then display the result into self.entries[][]
+        # Log the action
+        print("Starting to solve Example puzzle...")
+        
+        # === BACKEND SOLVE ===
+        csp = SudokuCSP(copy_grid(puzzle))
+        csp.solve()
+        self.set_board(csp.grid)
+
+        # Log the result
+        print("Example puzzle solved.")
 
     def solve_user_input(self):
-        # === PLACEHOLDER: Extract current board and send to your backend solver ===
-        # Example: puzzle = self.get_current_board()
-        # solution = self.backend.solve(puzzle)
-        # Then update entries with solution
-        pass
+        puzzle = self.get_current_board()
+
+        # Log the action
+        print("Starting to solve user input puzzle...")
+
+        # === BACKEND SOLVE ===
+        csp = SudokuCSP(copy_grid(puzzle))
+        csp.solve()
+        self.set_board(csp.grid)
+
+        # Log the result
+        print("User input puzzle solved.")
 
     def get_current_board(self):
         board = []
@@ -101,6 +139,23 @@ class SudokuGUI:
                     entry.delete(0, tk.END)
                     if board[i][j] != 0:
                         entry.insert(0, str(board[i][j]))
+                        entry.config(fg='blue', font=('Arial', 24, 'bold'))
+
+    def create_log_window(self):
+        self.log_window = tk.Toplevel(self.root)
+        self.log_window.title("Log Window")
+        self.log_window.geometry("400x300")
+        self.log_window.resizable(False, False)
+
+        self.log_text = scrolledtext.ScrolledText(self.log_window, width=40, height=10, font=('Arial', 12))
+        self.log_text.pack(padx=10, pady=10)
+
+    def update_log(self, message):
+        self.log_text.insert(tk.END, message + "\n")
+        self.log_text.yview(tk.END)  # Auto-scroll to the latest message
+
+def copy_grid(grid):
+    return [row[:] for row in grid]
 
 if __name__ == "__main__":
     root = tk.Tk()
