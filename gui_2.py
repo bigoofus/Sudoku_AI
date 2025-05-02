@@ -3,14 +3,21 @@ import sys
 from tkinter import scrolledtext  # Import for the log window
 from backend import SudokuCSP  # Adjust the import if the backend is named differently
 
+
+
 class LogStream:
-    def __init__(self, log_widget):
+    def __init__(self, log_widget, log_file="log.txt"):
         self.log_widget = log_widget
+        self.log_file = log_file
 
     def write(self, message):
         # Insert message into the log widget and auto-scroll to the latest message
         self.log_widget.insert(tk.END, message)
         self.log_widget.yview(tk.END)
+
+        # Log the message to the log file
+        with open(self.log_file, 'a') as file:
+            file.write(message)
 
     def flush(self):
         pass  # Needed to avoid any errors when flushing the stream
@@ -27,6 +34,8 @@ class SudokuGUI:
         self.canvas.pack()
 
         self.entries = [[None for _ in range(9)] for _ in range(9)]
+        self.prefilled = [[False for _ in range(9)] for _ in range(9)]
+
         self.draw_grid()
         self.create_cells()
 
@@ -43,7 +52,7 @@ class SudokuGUI:
         self.create_log_window()
 
         # Redirect stdout to capture prints
-        sys.stdout = LogStream(self.log_text)
+        sys.stdout = LogStream(self.log_text, log_file="log.txt")
 
     def draw_grid(self):
         for i in range(10):
@@ -76,6 +85,7 @@ class SudokuGUI:
 
     def solve_example(self):
         self.clear_board()
+        
         puzzle = [
             [5, 3, 0, 0, 7, 0, 0, 0, 0],
             [6, 0, 0, 1, 9, 5, 0, 0, 0],
@@ -87,6 +97,11 @@ class SudokuGUI:
             [0, 0, 0, 4, 1, 9, 0, 0, 5],
             [0, 0, 0, 0, 8, 0, 0, 7, 9]
         ]
+        self.prefilled = [[puzzle[i][j] != 0 for j in range(9)] for i in range(9)]
+
+        print("Board before solving:\n")
+        print(puzzle)
+        print("\n\n\n")
 
         for i in range(9):
             for j in range(9):
@@ -95,6 +110,9 @@ class SudokuGUI:
                     entry = self.entries[i][j]
                     entry.insert(0, str(val))
                     entry.config(state='disabled', disabledforeground='black', font=('Arial', 24, 'bold'))
+                    self.prefilled[i][j] = True
+                else:
+                    self.prefilled[i][j] = False
 
         # Log the action
         print("Starting to solve Example puzzle...")
@@ -106,9 +124,16 @@ class SudokuGUI:
 
         # Log the result
         print("Example puzzle solved.")
+        print("Solved Board:\n")
+        print(csp.grid)
+        print("\n\n\n")
 
     def solve_user_input(self):
         puzzle = self.get_current_board()
+        self.prefilled = [[puzzle[i][j] != 0 for j in range(9)] for i in range(9)]
+        print("Board before solving:\n")
+        print(puzzle)
+        print("\n\n\n")
 
         # Log the action
         print("Starting to solve user input puzzle...")
@@ -120,6 +145,9 @@ class SudokuGUI:
 
         # Log the result
         print("User input puzzle solved.")
+        print("Solved Board:\n")
+        print(csp.grid)
+        print("\n\n\n")
 
     def get_current_board(self):
         board = []
@@ -135,20 +163,33 @@ class SudokuGUI:
         for i in range(9):
             for j in range(9):
                 entry = self.entries[i][j]
-                if entry['state'] == 'normal':
-                    entry.delete(0, tk.END)
-                    if board[i][j] != 0:
-                        entry.insert(0, str(board[i][j]))
-                        entry.config(fg='blue', font=('Arial', 24, 'bold'))
+                entry.config(state='normal')  # Allow editing for now to update the value
+                entry.delete(0, tk.END)
+                if board[i][j] != 0:
+                    entry.insert(0, str(board[i][j]))
+                    if hasattr(self, 'prefilled') and not self.prefilled[i][j]:
+                        entry.config(fg='blue', font=('Arial', 24, 'bold'))  # Solved cells
+                    else:
+                        entry.config(fg='black', font=('Arial', 24, 'bold'))  # Pre-filled cells
+                else:
+                    entry.config(fg='black', font=('Arial', 24))
+                
+                # Lock prefilled cells again after solving
+                if hasattr(self, 'prefilled') and self.prefilled[i][j]:
+                    entry.config(state='disabled', disabledforeground='black')
+
+
+
+
 
     def create_log_window(self):
         self.log_window = tk.Toplevel(self.root)
         self.log_window.title("Log Window")
         self.log_window.geometry("400x300")
-        self.log_window.resizable(False, False)
+        self.log_window.resizable(True, True)
 
         self.log_text = scrolledtext.ScrolledText(self.log_window, width=40, height=10, font=('Arial', 12))
-        self.log_text.pack(padx=10, pady=10)
+        self.log_text.pack(padx=10, pady=10, fill=tk.BOTH, expand=True)
 
     def update_log(self, message):
         self.log_text.insert(tk.END, message + "\n")
