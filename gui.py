@@ -26,7 +26,7 @@ class SudokuGUI:
     def __init__(self, root,selected_mode):
         self.root = root
         self.root.title("Sudoku Solver")
-        if selected_mode==1:
+        if selected_mode!=0:
             self.root.geometry("600x700")
         self.root.resizable(False, False)
 
@@ -39,6 +39,7 @@ class SudokuGUI:
 
         self.draw_grid()
         self.create_cells()
+        self.generated_puzzle=None
         if selected_mode == 1:
         # Solve Button - Centered
             self.solve_button = tk.Button(
@@ -63,6 +64,47 @@ class SudokuGUI:
             highlightthickness=0
         )
             self.clear_button.place(relx=0.65, rely=0.93, width=150, height=50, anchor='center')
+            
+        if selected_mode == 2:
+            # Generate Button - Light Blue
+            self.generate_button = tk.Button(
+                root, text="Generate",
+                command=self.generate,
+                font=('Indie Flower', 35,'bold'),
+                bg='lightblue', fg='black',
+                activebackground='#add8e6',
+                relief='ridge', bd=4,
+                highlightthickness=0,
+                
+                            
+                
+            )
+            
+            self.generate_button.place(relx=0.25, rely=0.93, width=220, height=50, anchor='center')
+
+            # Solve Button - Light Green
+            self.solve_button = tk.Button(
+                root, text="Solve",
+                command=self.solve_generated,
+                font=('Indie Flower', 35,'bold'),
+                bg='lightgreen', fg='black',
+                activebackground='#90ee90',
+                relief='ridge', bd=4,
+                highlightthickness=0
+            )
+            self.solve_button.place(relx=.56, rely=0.93, width=150, height=50, anchor='center')
+
+            # Clear Button - Red
+            self.clear_button = tk.Button(
+                root, text="Clear",
+                command=self.clear_board,
+                font=('Indie Flower', 35,'bold'),
+                bg='tomato', fg='white',
+                activebackground='red',
+                relief='ridge', bd=4,
+                highlightthickness=0
+            )
+            self.clear_button.place(relx=0.81, rely=0.93, width=150, height=50, anchor='center')
         # Log window
             self.log_window = None  # To store reference to the log window
             self.create_log_window()
@@ -100,24 +142,28 @@ class SudokuGUI:
                 entry.delete(0, tk.END)
 
     def solve_example(self):
-        self.clear_board()
+        # self.clear_board()
+        if self.generated_puzzle!=None:
+            puzzle_str = self.generated_puzzle
+        else:
+            puzzle_str ="000000064000476980045009002950004008000001350000003006500617820279508601010902073" 
 
-        puzzle_str = "300000097007091000000300080600003015001802700730910002060009000070520400450000008"
+        # puzzle_str = "300000097007091000000300080600003015001802700730910002060009000070520400450000008"
         
-        puzzle_str2= "000000064000476980045009002950004008000001350000003006500617820279508601010902073" 
-        puzzle_str3= "000000000000003085001020000000507000004000100090000000500000073002010000000040009"
+        # puzzle_str2= "000000064000476980045009002950004008000001350000003006500617820279508601010902073" 
+        # puzzle_str3= "000000000000003085001020000000507000004000100090000000500000073002010000000040009"
         # Mark prefilled cells based on the string
-        self.prefilled = [[puzzle_str2[i * 9 + j] != '0' for j in range(9)] for i in range(9)]
+        self.prefilled = [[puzzle_str[i * 9 + j] != '0' for j in range(9)] for i in range(9)]
 
         print("Board before solving:\n")
         for i in range(9):
-            print([int(puzzle_str2[i * 9 + j]) for j in range(9)])
+            print([int(puzzle_str[i * 9 + j]) for j in range(9)])
         print("\n\n\n")
 
         # Fill the GUI board
         for i in range(9):
             for j in range(9):
-                val = puzzle_str2[i * 9 + j]
+                val = puzzle_str[i * 9 + j]
                 if val != '0':
                     entry = self.entries[i][j]
                     entry.insert(0, val)
@@ -129,7 +175,7 @@ class SudokuGUI:
         print("Starting to solve Example puzzle...")
 
         # === BACKEND SOLVE ===
-        csp = SudokuCSP(puzzle_str2)
+        csp = SudokuCSP(puzzle_str)
         csp.solve()
         grid_2d = [[int(csp.grid[i * 9 + j]) for j in range(9)] for i in range(9)]
         self.set_board(grid_2d)
@@ -140,9 +186,7 @@ class SudokuGUI:
         for row in csp.grid:
             print(row)
         print("\n\n\n")
-
-
-        
+   
     def get_current_board(self):
         board_str = ""
         for i in range(9):
@@ -178,11 +222,7 @@ class SudokuGUI:
         for i in range(9):
             print([int(csp.grid[i * 9 + j]) for j in range(9)])
         print("\n\n")
-
-
-
-
-
+        
     def set_board(self, board):
         for i in range(9):
             for j in range(9):
@@ -205,12 +245,6 @@ class SudokuGUI:
                     entry.config(state='disabled', disabledforeground='blue')
                     
 
-
-        
-       
-
-
-
     def create_log_window(self):
         self.log_window = tk.Toplevel(self.root)
         self.log_window.title("Log Window")
@@ -223,7 +257,18 @@ class SudokuGUI:
     def update_log(self, message):
         self.log_text.insert(tk.END, message + "\n")
         self.log_text.yview(tk.END)  # Auto-scroll to the latest message
-
+    def generate(self):
+        from suduko_generator import generate_sudoku_string
+        puzzle_string=generate_sudoku_string(k=20)
+        self.prefilled = [[puzzle_string[i * 9 + j] != '0' for j in range(9)] for i in range(9)]
+        grid_2d = [[int(puzzle_string[i * 9 + j]) for j in range(9)] for i in range(9)]
+        self.set_board(grid_2d)
+        self.generated_puzzle=puzzle_string
+        
+        
+        
+    def solve_generated(self):
+        self.solve_example()
 
 
 
@@ -243,4 +288,4 @@ def run_gui(mode,log_to_file=False):
         pass
     root.mainloop()
     
-# run_gui(0)
+# run_gui(2)
