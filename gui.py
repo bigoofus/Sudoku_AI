@@ -1,6 +1,6 @@
 import tkinter as tk
 import sys
-from tkinter import scrolledtext  # Import for the log window
+from tkinter import scrolledtext, messagebox  # Import for the log window
 from backend import SudokuCSP  # Adjust the import if the backend is named differently
 
 
@@ -23,10 +23,11 @@ class LogStream:
         pass  # Needed to avoid any errors when flushing the stream
 
 class SudokuGUI:
-    def __init__(self, root):
+    def __init__(self, root, selected_mode):
         self.root = root
         self.root.title("Sudoku Solver")
-        self.root.geometry("600x600")
+        if selected_mode != 0:
+            self.root.geometry("600x700")
         self.root.resizable(False, False)
 
         self.cell_size = 66
@@ -38,13 +39,93 @@ class SudokuGUI:
 
         self.draw_grid()
         self.create_cells()
+        self.generated_puzzle = None
+        self.generated_empty_spaces = 40  # Default value
 
-        # Log window
-        self.log_window = None  # To store reference to the log window
-        self.create_log_window()
+        if selected_mode == 1:
+            # Solve Button
+            self.solve_button = tk.Button(
+                root, text="Solve",
+                command=self.solve_user_input,
+                font=('Indie Flower', 40, 'bold'),
+                bg='lightgreen', fg='black',
+                activebackground='#90ee90',
+                relief='ridge', bd=4,
+                highlightthickness=0
+            )
+            self.solve_button.place(relx=0.35, rely=0.93, width=150, height=50, anchor='center')
 
-        # Redirect stdout to capture prints
-        # sys.stdout = LogStream(self.log_text, log_file="log.txt")
+            # Clear Button
+            self.clear_button = tk.Button(
+                root, text="Clear",
+                command=self.clear_board,
+                font=('Indie Flower', 40, 'bold'),
+                bg='tomato', fg='white',
+                activebackground='red',
+                relief='ridge', bd=4,
+                highlightthickness=0
+            )
+            self.clear_button.place(relx=0.65, rely=0.93, width=150, height=50, anchor='center')
+
+        if selected_mode == 2:
+            
+            
+
+            # Entry box for empty cells
+            self.empty_entry = tk.Entry(
+                root, font=('Indie Flower', 20),
+                justify='center',
+    
+            )
+            self.empty_entry.place(relx=0.06, rely=0.93, width=60, height=50, anchor='center')
+            self.empty_entry.insert(0, str(self.generated_empty_spaces))
+
+            # Generate Button
+            self.generate_button = tk.Button(
+                root, text="Generate",
+                command=self.on_generate_clicked,
+                font=('Indie Flower', 35, 'bold'),
+                bg='lightblue', fg='black',
+                activebackground='#add8e6',
+            )
+            self.generate_button.place(relx=0.30, rely=0.93, width=220, height=50, anchor='center')
+
+            # Solve Button
+            self.solve_button = tk.Button(
+                root, text="Solve",
+                command=self.solve_generated,
+                font=('Indie Flower', 35, 'bold'),
+                bg='lightgreen', fg='black',
+                activebackground='#90ee90',
+
+            )
+            self.solve_button.place(relx=0.62, rely=0.93, width=150, height=50, anchor='center')
+
+            # Clear Button
+            self.clear_button = tk.Button(
+                root, text="Clear",
+                command=self.clear_board,
+                font=('Indie Flower', 35, 'bold'),
+                bg='tomato', fg='white',
+                activebackground='red',
+
+            )
+            self.clear_button.place(relx=0.86, rely=0.93, width=125, height=50, anchor='center')
+
+            # Log window
+            self.log_window = None
+            self.create_log_window()
+    def on_generate_clicked(self):
+        try:
+            value = int(self.empty_entry.get())
+            if 1 <= value <= 80:
+                self.generated_empty_spaces = value
+                self.generate(value)  # Call your existing generate logic
+            else:
+                tk.messagebox.showerror("Invalid Input", "Please enter a number between 1 and 80.")
+        except ValueError:
+            tk.messagebox.showerror("Invalid Input", "Please enter a valid number.")
+
 
     def draw_grid(self):
         for i in range(10):
@@ -76,24 +157,28 @@ class SudokuGUI:
                 entry.delete(0, tk.END)
 
     def solve_example(self):
-        self.clear_board()
+        # self.clear_board()
+        if self.generated_puzzle!=None:
+            puzzle_str = self.generated_puzzle
+        else:
+            puzzle_str ="000000064000476980045009002950004008000001350000003006500617820279508601010902073" 
 
-        puzzle_str = "300000097007091000000300080600003015001802700730910002060009000070520400450000008"
+        # puzzle_str = "300000097007091000000300080600003015001802700730910002060009000070520400450000008"
         
-        puzzle_str2= "000000064000476980045009002950004008000001350000003006500617820279508601010902073" 
-        puzzle_str3= "000000000000003085001020000000507000004000100090000000500000073002010000000040009"
+        # puzzle_str2= "000000064000476980045009002950004008000001350000003006500617820279508601010902073" 
+        # puzzle_str3= "000000000000003085001020000000507000004000100090000000500000073002010000000040009"
         # Mark prefilled cells based on the string
-        self.prefilled = [[puzzle_str3[i * 9 + j] != '0' for j in range(9)] for i in range(9)]
+        self.prefilled = [[puzzle_str[i * 9 + j] != '0' for j in range(9)] for i in range(9)]
 
         print("Board before solving:\n")
         for i in range(9):
-            print([int(puzzle_str3[i * 9 + j]) for j in range(9)])
+            print([int(puzzle_str[i * 9 + j]) for j in range(9)])
         print("\n\n\n")
 
         # Fill the GUI board
         for i in range(9):
             for j in range(9):
-                val = puzzle_str3[i * 9 + j]
+                val = puzzle_str[i * 9 + j]
                 if val != '0':
                     entry = self.entries[i][j]
                     entry.insert(0, val)
@@ -105,8 +190,8 @@ class SudokuGUI:
         print("Starting to solve Example puzzle...")
 
         # === BACKEND SOLVE ===
-        csp = SudokuCSP(puzzle_str3)
-        csp.solve(log=False)
+        csp = SudokuCSP(puzzle_str)
+        csp.solve()
         grid_2d = [[int(csp.grid[i * 9 + j]) for j in range(9)] for i in range(9)]
         self.set_board(grid_2d)
         
@@ -116,29 +201,43 @@ class SudokuGUI:
         for row in csp.grid:
             print(row)
         print("\n\n\n")
+   
+    def get_current_board(self):
+        board_str = ""
+        for i in range(9):
+            for j in range(9):
+                val = self.entries[i][j].get()
+                board_str += val if val.isdigit() else '0'
+        print( "Current board string:", board_str)
+        return board_str
 
     def solve_user_input(self):
-        pass
         puzzle = self.get_current_board()
-        self.prefilled = [[puzzle[i][j] != 0 for j in range(9)] for i in range(9)]
-        print("Board before solving:\n")
-        print(puzzle)
-        print("\n\n\n")
 
-        # Log the action
+        # Mark prefilled cells
+        self.prefilled = [[puzzle[i * 9 + j] != '0' for j in range(9)] for i in range(9)]
+
+        print("Board before solving:\n")
+        for i in range(9):
+            print([int(puzzle[i * 9 + j]) for j in range(9)])
+        print("\n\n")
+
         print("Starting to solve user input puzzle...")
 
-        # === BACKEND SOLVE ===
-        csp = SudokuCSP()
+        # Solve using CSP backend
+        csp = SudokuCSP(puzzle)
         csp.solve()
-        self.set_board(csp.grid)
 
-        # Log the result
+        # Convert solved grid to 2D list
+        grid_2d = [[int(csp.grid[i * 9 + j]) for j in range(9)] for i in range(9)]
+        self.set_board(grid_2d)
+
         print("User input puzzle solved.")
         print("Solved Board:\n")
-        print(csp.grid)
-        print("\n\n\n")
-
+        for i in range(9):
+            print([int(csp.grid[i * 9 + j]) for j in range(9)])
+        print("\n\n")
+        
     def set_board(self, board):
         for i in range(9):
             for j in range(9):
@@ -157,6 +256,9 @@ class SudokuGUI:
                 # Lock prefilled cells again after solving
                 if hasattr(self, 'prefilled') and self.prefilled[i][j]:
                     entry.config(state='disabled', disabledforeground='black')
+                if hasattr(self, 'prefilled') and not self.prefilled[i][j]:
+                    entry.config(state='disabled', disabledforeground='blue')
+                    
 
     def create_log_window(self):
         self.log_window = tk.Toplevel(self.root)
@@ -170,10 +272,24 @@ class SudokuGUI:
     def update_log(self, message):
         self.log_text.insert(tk.END, message + "\n")
         self.log_text.yview(tk.END)  # Auto-scroll to the latest message
+    def generate(self,value):
+        from suduko_generator import generate_sudoku_string
+        puzzle_string=generate_sudoku_string(k=value)
+        self.prefilled = [[puzzle_string[i * 9 + j] != '0' for j in range(9)] for i in range(9)]
+        grid_2d = [[int(puzzle_string[i * 9 + j]) for j in range(9)] for i in range(9)]
+        self.set_board(grid_2d)
+        self.generated_puzzle=puzzle_string
+        
+        
+        
+    def solve_generated(self):
+        self.solve_example()
+
+
 
 def run_gui(mode,log_to_file=False):
     root = tk.Tk()
-    gui = SudokuGUI(root)
+    gui = SudokuGUI(root,selected_mode=mode)
     
     if log_to_file==True:
         sys.stdout = LogStream(gui.log_text, log_file="log.txt")
@@ -181,11 +297,10 @@ def run_gui(mode,log_to_file=False):
     if mode == 0:
         gui.solve_example()
     elif mode == 1:
+        # gui.input_puzzle()
         pass
     else:
         pass
     root.mainloop()
     
-
-    
-# run_gui(0)
+run_gui(2)

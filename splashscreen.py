@@ -110,6 +110,7 @@ def startscreen():
     print(f"Selected Mode: {selected_mode}")
     
     print(f"Log_to_file: {log_to_file}")
+    pygame.quit()
     return selected_mode, log_to_file
 
     # Replace with actual game starter
