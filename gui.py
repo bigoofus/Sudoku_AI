@@ -1,6 +1,6 @@
 import tkinter as tk
 import sys
-from tkinter import scrolledtext  # Import for the log window
+from tkinter import scrolledtext, messagebox  # Import for the log window
 from backend import SudokuCSP  # Adjust the import if the backend is named differently
 
 
@@ -23,10 +23,10 @@ class LogStream:
         pass  # Needed to avoid any errors when flushing the stream
 
 class SudokuGUI:
-    def __init__(self, root,selected_mode):
+    def __init__(self, root, selected_mode):
         self.root = root
         self.root.title("Sudoku Solver")
-        if selected_mode!=0:
+        if selected_mode != 0:
             self.root.geometry("600x700")
         self.root.resizable(False, False)
 
@@ -39,78 +39,93 @@ class SudokuGUI:
 
         self.draw_grid()
         self.create_cells()
-        self.generated_puzzle=None
+        self.generated_puzzle = None
+        self.generated_empty_spaces = 40  # Default value
+
         if selected_mode == 1:
-        # Solve Button - Centered
-            self.solve_button = tk.Button(
-            root, text="Solve",
-            command=self.solve_user_input,
-            font=('Indie Flower', 40,'bold'),
-            bg='lightgreen', fg='black',
-            activebackground='#90ee90',
-            relief='ridge', bd=4,
-            highlightthickness=0
-        )
-            self.solve_button.place(relx=0.35, rely=0.93, width=150, height=50, anchor='center')
-
-        # Clear Button - Centered, Red
-            self.clear_button = tk.Button(
-            root, text="Clear",
-            command=self.clear_board,
-            font=('Indie Flower', 40,'bold'),
-            bg='tomato', fg='white',
-            activebackground='red',
-            relief='ridge', bd=4,
-            highlightthickness=0
-        )
-            self.clear_button.place(relx=0.65, rely=0.93, width=150, height=50, anchor='center')
-            
-        if selected_mode == 2:
-            # Generate Button - Light Blue
-            self.generate_button = tk.Button(
-                root, text="Generate",
-                command=self.generate,
-                font=('Indie Flower', 35,'bold'),
-                bg='lightblue', fg='black',
-                activebackground='#add8e6',
-                relief='ridge', bd=4,
-                highlightthickness=0,
-                
-                            
-                
-            )
-            
-            self.generate_button.place(relx=0.25, rely=0.93, width=220, height=50, anchor='center')
-
-            # Solve Button - Light Green
+            # Solve Button
             self.solve_button = tk.Button(
                 root, text="Solve",
-                command=self.solve_generated,
-                font=('Indie Flower', 35,'bold'),
+                command=self.solve_user_input,
+                font=('Indie Flower', 40, 'bold'),
                 bg='lightgreen', fg='black',
                 activebackground='#90ee90',
                 relief='ridge', bd=4,
                 highlightthickness=0
             )
-            self.solve_button.place(relx=.56, rely=0.93, width=150, height=50, anchor='center')
+            self.solve_button.place(relx=0.35, rely=0.93, width=150, height=50, anchor='center')
 
-            # Clear Button - Red
+            # Clear Button
             self.clear_button = tk.Button(
                 root, text="Clear",
                 command=self.clear_board,
-                font=('Indie Flower', 35,'bold'),
+                font=('Indie Flower', 40, 'bold'),
                 bg='tomato', fg='white',
                 activebackground='red',
                 relief='ridge', bd=4,
                 highlightthickness=0
             )
-            self.clear_button.place(relx=0.81, rely=0.93, width=150, height=50, anchor='center')
-        # Log window
-            self.log_window = None  # To store reference to the log window
-            self.create_log_window()
+            self.clear_button.place(relx=0.65, rely=0.93, width=150, height=50, anchor='center')
 
-        # Redirect stdout to capture prints
-        # sys.stdout = LogStream(self.log_text, log_file="log.txt")
+        if selected_mode == 2:
+            
+            
+
+            # Entry box for empty cells
+            self.empty_entry = tk.Entry(
+                root, font=('Indie Flower', 20),
+                justify='center',
+    
+            )
+            self.empty_entry.place(relx=0.06, rely=0.93, width=60, height=50, anchor='center')
+            self.empty_entry.insert(0, str(self.generated_empty_spaces))
+
+            # Generate Button
+            self.generate_button = tk.Button(
+                root, text="Generate",
+                command=self.on_generate_clicked,
+                font=('Indie Flower', 35, 'bold'),
+                bg='lightblue', fg='black',
+                activebackground='#add8e6',
+            )
+            self.generate_button.place(relx=0.30, rely=0.93, width=220, height=50, anchor='center')
+
+            # Solve Button
+            self.solve_button = tk.Button(
+                root, text="Solve",
+                command=self.solve_generated,
+                font=('Indie Flower', 35, 'bold'),
+                bg='lightgreen', fg='black',
+                activebackground='#90ee90',
+
+            )
+            self.solve_button.place(relx=0.62, rely=0.93, width=150, height=50, anchor='center')
+
+            # Clear Button
+            self.clear_button = tk.Button(
+                root, text="Clear",
+                command=self.clear_board,
+                font=('Indie Flower', 35, 'bold'),
+                bg='tomato', fg='white',
+                activebackground='red',
+
+            )
+            self.clear_button.place(relx=0.86, rely=0.93, width=125, height=50, anchor='center')
+
+            # Log window
+            self.log_window = None
+            self.create_log_window()
+    def on_generate_clicked(self):
+        try:
+            value = int(self.empty_entry.get())
+            if 1 <= value <= 80:
+                self.generated_empty_spaces = value
+                self.generate(value)  # Call your existing generate logic
+            else:
+                tk.messagebox.showerror("Invalid Input", "Please enter a number between 1 and 80.")
+        except ValueError:
+            tk.messagebox.showerror("Invalid Input", "Please enter a valid number.")
+
 
     def draw_grid(self):
         for i in range(10):
@@ -257,9 +272,9 @@ class SudokuGUI:
     def update_log(self, message):
         self.log_text.insert(tk.END, message + "\n")
         self.log_text.yview(tk.END)  # Auto-scroll to the latest message
-    def generate(self):
+    def generate(self,value):
         from suduko_generator import generate_sudoku_string
-        puzzle_string=generate_sudoku_string(k=20)
+        puzzle_string=generate_sudoku_string(k=value)
         self.prefilled = [[puzzle_string[i * 9 + j] != '0' for j in range(9)] for i in range(9)]
         grid_2d = [[int(puzzle_string[i * 9 + j]) for j in range(9)] for i in range(9)]
         self.set_board(grid_2d)
@@ -288,4 +303,4 @@ def run_gui(mode,log_to_file=False):
         pass
     root.mainloop()
     
-# run_gui(2)
+run_gui(2)
