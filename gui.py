@@ -117,8 +117,6 @@ class SudokuGUI:
             print(row)
         print("\n\n\n")
 
-
-
     def solve_user_input(self):
         pass
         puzzle = self.get_current_board()
@@ -131,7 +129,7 @@ class SudokuGUI:
         print("Starting to solve user input puzzle...")
 
         # === BACKEND SOLVE ===
-        csp = SudokuCSP(copy_grid(puzzle))
+        csp = SudokuCSP()
         csp.solve()
         self.set_board(csp.grid)
 
@@ -140,8 +138,6 @@ class SudokuGUI:
         print("Solved Board:\n")
         print(csp.grid)
         print("\n\n\n")
-
-
 
     def set_board(self, board):
         for i in range(9):
@@ -162,10 +158,6 @@ class SudokuGUI:
                 if hasattr(self, 'prefilled') and self.prefilled[i][j]:
                     entry.config(state='disabled', disabledforeground='black')
 
-
-
-
-
     def create_log_window(self):
         self.log_window = tk.Toplevel(self.root)
         self.log_window.title("Log Window")
@@ -178,9 +170,6 @@ class SudokuGUI:
     def update_log(self, message):
         self.log_text.insert(tk.END, message + "\n")
         self.log_text.yview(tk.END)  # Auto-scroll to the latest message
-
-
-
 
 def run_gui(mode,log_to_file=False):
     root = tk.Tk()

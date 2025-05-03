@@ -3,12 +3,13 @@ import copy
 from collections import deque
 
 class SudokuCSP:
-    def __init__(self, initial_grid=None):
+    def __init__(self, initial_grid = None , logging = True):
         self.grid = initial_grid if initial_grid else ''.join('0' for _ in range(9*9))
         self.variables = [(row, col) for row in range(9) for col in range(9)]
         self.domains = {var: '123456789' for var in self.variables}
         self.arcs = self.create_arcs()
         self.initialize_domains()
+        self.logging = logging
 
     def create_arcs(self):  #Function that create all possible arcs of the sudoko grid
         arcs = set()
@@ -100,7 +101,8 @@ class SudokuCSP:
             revised, pruned_now = self.revise(Xi, Xj)
 
             if len(self.domains[Xi]) == 0:
-                print(f"Failure: Domain of {Xi} emptied by revising with {Xj}")
+                if self.logging:
+                    print(f"Failure: Domain of {Xi} emptied by revising with {Xj}")
                 self.domains[Xi] = dom_copy
                 return False
             
@@ -120,7 +122,8 @@ class SudokuCSP:
                 value = self.domains[var]
                 i, j = var
                 self.set_grid_val(i , j , value)
-                print(f"Singleton assignment: {var} = {value}")
+                if self.logging:
+                    print(f"Singleton assignment: {var} = {value}")
 
         return True        
 
@@ -132,10 +135,10 @@ class SudokuCSP:
         domain_j = self.domains[Xj]
 
         revised += 1
-
-        print(f"\nRevising arc {Xi} -> {Xj}")
-        print(f"Current domain of {Xi}: {domain_i}")
-        print(f"Domain of {Xj}: {domain_j}")
+        if self.logging:
+            print(f"\nRevising arc {Xi} -> {Xj}")
+            print(f"Current domain of {Xi}: {domain_i}")
+            print(f"Domain of {Xj}: {domain_j}")
 
         to_remove = []
         for x in domain_i:
@@ -143,11 +146,12 @@ class SudokuCSP:
                 to_remove.append(x)
 
         for x in to_remove:
-            print(f"Removed {x} from {Xi} due to lack of support in {Xj}")
+            if self.logging:
+                print(f"Removed {x} from {Xi} due to lack of support in {Xj}")
             self.domains[Xi] = self.domains[Xi].replace(str(x) , "")
             pruned += 1
 
-        if(to_remove):
+        if(to_remove and self.logging):
             print(f"Updated domain of {Xi}: {self.domains[Xi]}")
 
         return revised, pruned
@@ -169,7 +173,6 @@ class SudokuCSP:
         return neighbors
     
     def get_first_unassigned(self):
-        unassigned = []
         for var in self.variables:
             row , col = var        
             if self.get_grid_val(row , col) == 0:
@@ -177,29 +180,46 @@ class SudokuCSP:
         return None
 
     def forward_checking(self , var , value):
-        print('Starting Forward Checking: \n\n')
         
         pruned = []         #Store pruned domains to allow recovery in case of empty domain detected
         neighbours = self.get_neighbors(var)
         for neighbour in neighbours:
-
-            print(f"\nRevising arc {var} -> {neighbour}")
-            print(f"Current domain of {var}: {self.domains[var]}")
-            print(f"Domain of {neighbour}: {self.domains[neighbour]}")
+            
+            if self.logging:
+                print(f"\nRevising arc {var} -> {neighbour}")
+                print(f"Current domain of {var}: {self.domains[var]}")
+                print(f"Domain of {neighbour}: {self.domains[neighbour]}")
 
             if not any(value != y for y in self.domains[neighbour]):
-                print(f"Removed {value} from {var} due to lack of support in {neighbour}")
-                print(f"Updated domain of {var}: {self.domains[var]}")
+                if self.logging:
+                    print(f"Removed {value} from {var} due to lack of support in {neighbour}")
+                    print(f"Updated domain of {var}: {self.domains[var]}")
 
                 self.domains[var] = self.domains[var].replace(str(value) , "")
                 pruned.append((neighbour , value))
                 
                 if len(self.domains[neighbour]) == 0:
-                    print(f'Forward checking of assignment {var} with value {value} failed')
+                    if self.logging:
+                        print(f'Forward checking of assignment {var} with value {value} failed')
                     for (var, value) in pruned:
                         self.domains[var] = self.domains[var] + str(value)
                     return False
         return True
+
+    def get_most_constrained_var(self):
+        unassigned = [var for var in self.variables if self.get_grid_val(*var) == 0]        #get all unassigned variables
+        return min(unassigned, key=lambda var: len(self.domains[var]), default=None)        #return variable with least number of possible domain values
+    
+    def order_least_restricting_val(self , var):
+        neighbours_restricted = []
+        for value in self.domains[var]:
+            impact = 0
+            for neighbour in self.get_neighbors(var):
+                if value in self.domains[neighbour]:
+                    impact += 1
+                neighbours_restricted.append((value , impact))
+
+        return [val for val, _ in sorted(neighbours_restricted, key=lambda x: x[1])]
 
     def backtrack_ac3(self):
         unassigned = self.get_first_unassigned()
@@ -217,34 +237,31 @@ class SudokuCSP:
             self.set_grid_val(row , col , int(val))
             self.domains[unassigned] = str(val)
 
-            print(f'Backtrack assigned {val} to {unassigned}')
-
-            self.print_sudoku()
+            if self.logging:
+                print(f'Backtrack assigned {val} to {unassigned}')
         
             if self.is_valid_assignment(row , col):
-                print('valid grid')
 
                 if self.forward_checking(unassigned , val):
-                    print('Forward Checking done')
 
                     if self.arc_consistency():
-                        print('AC3 DONE')
 
                         if self.backtrack_ac3():
-                            print('BT-AC3 DONE')
                             return True
                 
             self.set_grid_val(row , col , 0)
             self.domains = old_domains
             self.grid = original_grid
 
-            print(f'Backtrack reset {unassigned} from {val}')
+            if self.logging:
+                print(f'Backtrack reset {unassigned} from {val}')
 
         return False
 
     def solve(self):
         self.arc_consistency()
-        self.backtrack_ac3()
+        if not self.backtrack_ac3():
+            print('\n\nERROR: Sudoku board is not solvable\n\n')
 
     def print_sudoku(self):
         print('\n\n')
@@ -296,9 +313,8 @@ class SudokuCSP:
 if __name__ == "__main__":
     example_grid = "300000097007091000000300080600003015001802700730910002060009000070520400450000008"
     print(len(example_grid))
-    sudoku = SudokuCSP(example_grid)
+    sudoku = SudokuCSP(example_grid , logging = True)
     sudoku.print_sudoku()
     sudoku.solve()
-    print(sudoku.grid)
     sudoku.print_sudoku()
     print(f'\nIs it a valid board?: {sudoku.is_valid_grid()}')
