@@ -23,10 +23,11 @@ class LogStream:
         pass  # Needed to avoid any errors when flushing the stream
 
 class SudokuGUI:
-    def __init__(self, root):
+    def __init__(self, root,selected_mode):
         self.root = root
         self.root.title("Sudoku Solver")
-        self.root.geometry("600x600")
+        if selected_mode==1:
+            self.root.geometry("600x700")
         self.root.resizable(False, False)
 
         self.cell_size = 66
@@ -38,10 +39,33 @@ class SudokuGUI:
 
         self.draw_grid()
         self.create_cells()
+        if selected_mode == 1:
+        # Solve Button - Centered
+            self.solve_button = tk.Button(
+            root, text="Solve",
+            command=self.solve_user_input,
+            font=('Indie Flower', 40,'bold'),
+            bg='lightgreen', fg='black',
+            activebackground='#90ee90',
+            relief='ridge', bd=4,
+            highlightthickness=0
+        )
+            self.solve_button.place(relx=0.35, rely=0.93, width=150, height=50, anchor='center')
 
+        # Clear Button - Centered, Red
+            self.clear_button = tk.Button(
+            root, text="Clear",
+            command=self.clear_board,
+            font=('Indie Flower', 40,'bold'),
+            bg='tomato', fg='white',
+            activebackground='red',
+            relief='ridge', bd=4,
+            highlightthickness=0
+        )
+            self.clear_button.place(relx=0.65, rely=0.93, width=150, height=50, anchor='center')
         # Log window
-        self.log_window = None  # To store reference to the log window
-        self.create_log_window()
+            self.log_window = None  # To store reference to the log window
+            self.create_log_window()
 
         # Redirect stdout to capture prints
         # sys.stdout = LogStream(self.log_text, log_file="log.txt")
@@ -83,17 +107,17 @@ class SudokuGUI:
         puzzle_str2= "000000064000476980045009002950004008000001350000003006500617820279508601010902073" 
         puzzle_str3= "000000000000003085001020000000507000004000100090000000500000073002010000000040009"
         # Mark prefilled cells based on the string
-        self.prefilled = [[puzzle_str3[i * 9 + j] != '0' for j in range(9)] for i in range(9)]
+        self.prefilled = [[puzzle_str2[i * 9 + j] != '0' for j in range(9)] for i in range(9)]
 
         print("Board before solving:\n")
         for i in range(9):
-            print([int(puzzle_str3[i * 9 + j]) for j in range(9)])
+            print([int(puzzle_str2[i * 9 + j]) for j in range(9)])
         print("\n\n\n")
 
         # Fill the GUI board
         for i in range(9):
             for j in range(9):
-                val = puzzle_str3[i * 9 + j]
+                val = puzzle_str2[i * 9 + j]
                 if val != '0':
                     entry = self.entries[i][j]
                     entry.insert(0, val)
@@ -105,8 +129,8 @@ class SudokuGUI:
         print("Starting to solve Example puzzle...")
 
         # === BACKEND SOLVE ===
-        csp = SudokuCSP(puzzle_str3)
-        csp.solve(log=False)
+        csp = SudokuCSP(puzzle_str2)
+        csp.solve()
         grid_2d = [[int(csp.grid[i * 9 + j]) for j in range(9)] for i in range(9)]
         self.set_board(grid_2d)
         
@@ -118,28 +142,44 @@ class SudokuGUI:
         print("\n\n\n")
 
 
+        
+    def get_current_board(self):
+        board_str = ""
+        for i in range(9):
+            for j in range(9):
+                val = self.entries[i][j].get()
+                board_str += val if val.isdigit() else '0'
+        print( "Current board string:", board_str)
+        return board_str
 
     def solve_user_input(self):
-        pass
         puzzle = self.get_current_board()
-        self.prefilled = [[puzzle[i][j] != 0 for j in range(9)] for i in range(9)]
-        print("Board before solving:\n")
-        print(puzzle)
-        print("\n\n\n")
 
-        # Log the action
+        # Mark prefilled cells
+        self.prefilled = [[puzzle[i * 9 + j] != '0' for j in range(9)] for i in range(9)]
+
+        print("Board before solving:\n")
+        for i in range(9):
+            print([int(puzzle[i * 9 + j]) for j in range(9)])
+        print("\n\n")
+
         print("Starting to solve user input puzzle...")
 
-        # === BACKEND SOLVE ===
-        csp = SudokuCSP(copy_grid(puzzle))
+        # Solve using CSP backend
+        csp = SudokuCSP(puzzle)
         csp.solve()
-        self.set_board(csp.grid)
 
-        # Log the result
+        # Convert solved grid to 2D list
+        grid_2d = [[int(csp.grid[i * 9 + j]) for j in range(9)] for i in range(9)]
+        self.set_board(grid_2d)
+
         print("User input puzzle solved.")
         print("Solved Board:\n")
-        print(csp.grid)
-        print("\n\n\n")
+        for i in range(9):
+            print([int(csp.grid[i * 9 + j]) for j in range(9)])
+        print("\n\n")
+
+
 
 
 
@@ -161,8 +201,13 @@ class SudokuGUI:
                 # Lock prefilled cells again after solving
                 if hasattr(self, 'prefilled') and self.prefilled[i][j]:
                     entry.config(state='disabled', disabledforeground='black')
+                if hasattr(self, 'prefilled') and not self.prefilled[i][j]:
+                    entry.config(state='disabled', disabledforeground='blue')
+                    
 
 
+        
+       
 
 
 
@@ -184,7 +229,7 @@ class SudokuGUI:
 
 def run_gui(mode,log_to_file=False):
     root = tk.Tk()
-    gui = SudokuGUI(root)
+    gui = SudokuGUI(root,selected_mode=mode)
     
     if log_to_file==True:
         sys.stdout = LogStream(gui.log_text, log_file="log.txt")
@@ -192,11 +237,10 @@ def run_gui(mode,log_to_file=False):
     if mode == 0:
         gui.solve_example()
     elif mode == 1:
+        # gui.input_puzzle()
         pass
     else:
         pass
     root.mainloop()
-    
-
     
 # run_gui(0)
