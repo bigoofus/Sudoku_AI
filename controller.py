@@ -3,7 +3,8 @@ from gui import run_gui
 
 
 while True:
-    selected_mode,log_to_file=startscreen()
-    run_gui(selected_mode,log_to_file)
+        selected_mode,logging=startscreen()
+        run_gui(selected_mode,logging)
     
+
     

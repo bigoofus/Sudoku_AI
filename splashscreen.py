@@ -13,8 +13,8 @@ def startscreen():
     WHITE = (255, 255, 255)
     BLACK = (0, 0, 0)
     GRAY = (200, 200, 200)
-    FONT = pygame.font.SysFont("Indie Flower", 40)
-    SMALL_FONT = pygame.font.SysFont("Indie Flower", 30)
+    FONT = pygame.font.SysFont("Teacher", 40)
+    SMALL_FONT = pygame.font.SysFont("Teacher", 30)
 
     # Setup screen
     screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
@@ -24,14 +24,14 @@ def startscreen():
     # Text title setup (replaces logo)
     title_text = "Sudoku"
     title_font_size = 150  # Adjust this to control how big the title appears
-    TITLE_FONT = pygame.font.SysFont("Indie Flower", title_font_size)
+    TITLE_FONT = pygame.font.SysFont("Teacher", title_font_size)
     title_surface = TITLE_FONT.render(title_text, True, BLACK)
     title_rect = title_surface.get_rect(center=(SCREEN_WIDTH // 2, 120))  # Adjust y=120 to move up/down
 
     # Checkbox (now only one)
     checkbox_size = 20
     checkbox_rect = pygame.Rect((SCREEN_WIDTH - checkbox_size) // 2, 250, checkbox_size, checkbox_size)
-    log_to_file = False
+    logging = False
 
     # Buttons
     button_texts = ["AI Solving Example puzzle", "Input your puzzle", "Generate Puzzle"]
@@ -64,11 +64,11 @@ def startscreen():
         # Checkbox and label
         pygame.draw.rect(screen, WHITE, checkbox_rect, border_radius=br)
         pygame.draw.rect(screen, BLACK, checkbox_rect, 2, border_radius=br)
-        if log_to_file:
+        if logging:
             pygame.draw.line(screen, BLACK, (checkbox_rect.x, checkbox_rect.y), (checkbox_rect.x + checkbox_size, checkbox_rect.y + checkbox_size), 3)
             pygame.draw.line(screen, BLACK, (checkbox_rect.x + checkbox_size, checkbox_rect.y), (checkbox_rect.x, checkbox_rect.y + checkbox_size), 3)
 
-        checkbox_label = SMALL_FONT.render("Log To File", True, BLACK)
+        checkbox_label = SMALL_FONT.render("Logging", True, BLACK)
         checkbox_label_rect = checkbox_label.get_rect()
         checkbox_label_rect.midleft = (checkbox_rect.x + checkbox_size + 10, checkbox_rect.y + checkbox_size // 2)
         screen.blit(checkbox_label, checkbox_label_rect)
@@ -91,7 +91,7 @@ def startscreen():
 
             if event.type == pygame.MOUSEBUTTONDOWN:
                 if checkbox_rect.collidepoint(event.pos):
-                    log_to_file = not log_to_file
+                    logging = not logging
 
                 for mode, rect in buttons:
                     if rect.collidepoint(event.pos):
@@ -109,11 +109,10 @@ def startscreen():
 
     print(f"Selected Mode: {selected_mode}")
     
-    print(f"Log_to_file: {log_to_file}")
+    print(f"logging: {logging}")
     pygame.quit()
-    return selected_mode, log_to_file
+    return selected_mode, logging
 
-    # Replace with actual game starter
-    # gui.start_game(selected_mode, search_depth=3, log_to_file=log_to_file)  # default depth 3
+
 
 
