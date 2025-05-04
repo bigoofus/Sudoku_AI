@@ -12,16 +12,16 @@ class SudokuCSP:
         self.logging = logging
 
     def create_arcs(self):  #Function that create all possible arcs of the sudoko grid
-        arcs = set()
+        arcs = []
         for r in range(9):
             for c in range(9):
                 for k in range(9):
                     if k != c:
-                        arcs.add(((r , c) , (r , k)))  # Same row
-                        arcs.add(((r , k) , (r , c)))
+                        arcs.append(((r , c) , (r , k)))  # Same row
+                        arcs.append(((r , k) , (r , c)))
                     if k != r:
-                        arcs.add(((r , c) , (k , c)))  # Same column
-                        arcs.add(((r , k) , (r , c)))
+                        arcs.append(((r , c) , (k , c)))  # Same column
+                        arcs.append(((r , k) , (r , c)))
 
                 # Same subgrid
                 br, bc = 3 * (r // 3), 3 * (c // 3)
@@ -29,9 +29,9 @@ class SudokuCSP:
                     for dc in range(3):
                         nr, nc = br + dr, bc + dc
                         if (nr, nc) != (r, c):
-                            arcs.add(((r , c) , (nr , nc)))
-                            arcs.add(((nr , nc) , (r , c)))
-        arcs = {(a, b) for (a, b) in arcs if a != b}
+                            arcs.append(((r , c) , (nr , nc)))
+                            arcs.append(((nr , nc) , (r , c)))
+        arcs = [(a, b) for (a, b) in arcs if a != b]
         return arcs
 
     def get_grid_val(self , row , col):
@@ -86,17 +86,16 @@ class SudokuCSP:
                     return False
         return True
         
-    def arc_consistency(self):      #check arc consistency of all our arcs
-        queue = deque(self.arcs)
-        in_queue = set(self.arcs)  # Track arcs currently in the queue
-
+    def arc_consistency(self , queue = None):      #check arc consistency of all our arcs
+        if not queue:
+            queue = self.arcs.copy()
+        
         revisions = 0
         pruned = 0
 
         while queue:
-            Xi, Xj = queue.popleft()
+            Xi, Xj = queue.pop(0)
             dom_copy = self.domains[Xi]
-            in_queue.discard((Xi, Xj))  # Mark as removed from queue
 
             revised, pruned_now = self.revise(Xi, Xj)
 
@@ -105,25 +104,21 @@ class SudokuCSP:
                     print(f"Failure: Domain of {Xi} emptied by revising with {Xj}")
                 self.domains[Xi] = dom_copy
                 return False
-            
-            
 
+            if len(self.domains[Xi]) == 1:
+                value = next(iter(self.domains[Xi]))
+                i, j =  Xi
+                self.set_grid_val(i , j , value)
+                if self.logging:
+                    print(f"Variable {Xi} became singleton with value {value}")
+            
             revisions += revised
             pruned += pruned_now
 
-            """if pruned_now:
+            if pruned_now:
                 for Xk in self.get_neighbors(Xi):
-                    if Xk != Xj and (Xk, Xi) not in in_queue:
+                    if Xk != Xj:
                         queue.append((Xk, Xi))
-                        in_queue.add((Xk, Xi))"""
-            
-        for var in self.variables:
-            if len(self.domains[var]) == 1:
-                value = self.domains[var]
-                i, j = var
-                self.set_grid_val(i , j , value)
-                if self.logging:
-                    print(f"Singleton assignment: {var} = {value}")
 
         return True        
 
@@ -180,30 +175,32 @@ class SudokuCSP:
         return None
 
     def forward_checking(self , var , value):
-        
-        pruned = []         #Store pruned domains to allow recovery in case of empty domain detected
-        neighbours = self.get_neighbors(var)
-        for neighbour in neighbours:
-            
-            if self.logging:
-                print(f"\nRevising arc {var} -> {neighbour}")
-                print(f"Current domain of {var}: {self.domains[var]}")
-                print(f"Domain of {neighbour}: {self.domains[neighbour]}")
-
-            if not any(value != y for y in self.domains[neighbour]):
-                if self.logging:
-                    print(f"Removed {value} from {var} due to lack of support in {neighbour}")
-                    print(f"Updated domain of {var}: {self.domains[var]}")
-
-                self.domains[var] = self.domains[var].replace(str(value) , "")
-                pruned.append((neighbour , value))
                 
-                if len(self.domains[neighbour]) == 0:
+        saved_domains = {}
+        conflicts = []
+        
+        for neighbor in self.get_neighbors(var):
+            ni, nj = neighbor
+            if self.get_grid_val(ni , nj) == 0:
+                if value in self.domains[neighbor]:
+                    if neighbor not in saved_domains:
+                        saved_domains[neighbor] = self.domains[neighbor]
+                    
+                    self.domains[neighbor].replace(str(value) , '')
+
                     if self.logging:
-                        print(f'Forward checking of assignment {var} with value {value} failed')
-                    for (var, value) in pruned:
-                        self.domains[var] = self.domains[var] + str(value)
-                    return False
+                        print(f"Forward checking: removed {value} from domain of {neighbor}")
+                    
+                    if not self.domains[neighbor]:
+                        if self.logging:
+                            print(f"Forward checking: domain of {neighbor} became empty")
+                        conflicts.append(neighbor)
+        
+        if conflicts:
+            for n, domain in saved_domains.items():
+                self.domains[n] = domain
+            return False
+        
         return True
 
     def get_most_constrained_var(self):
@@ -217,19 +214,19 @@ class SudokuCSP:
             for neighbour in self.get_neighbors(var):
                 if value in self.domains[neighbour]:
                     impact += 1
-                neighbours_restricted.append((value , impact))
+            neighbours_restricted.append((value , impact))
 
         return [val for val, _ in sorted(neighbours_restricted, key=lambda x: x[1])]
 
     def backtrack_ac3(self):
-        unassigned = self.get_first_unassigned()
+        unassigned = self.get_most_constrained_var()        #MCV heuristic
 
         if not unassigned:
             return True     # game complete (all variables assigned)
         
         row , col = unassigned
 
-        for val in self.domains[unassigned]:
+        for val in self.order_least_restricting_val(unassigned):        #LRV heuristic
             
             original_grid = self.grid
             old_domains = {v: self.domains[v] for v in self.variables}
@@ -242,9 +239,9 @@ class SudokuCSP:
         
             if self.is_valid_assignment(row , col):
 
-                if self.forward_checking(unassigned , val):
-
-                    if self.arc_consistency():
+                if self.forward_checking(unassigned , val):             #Forward Checking
+                    affected = [(neighbor, unassigned) for neighbor in self.get_neighbors(unassigned)]
+                    if self.arc_consistency(queue = affected):
 
                         if self.backtrack_ac3():
                             return True
@@ -311,9 +308,9 @@ class SudokuCSP:
 
 # Example usage
 if __name__ == "__main__":
-    example_grid = "300000097007091000000300080600003015001802700730910002060009000070520400450000008"
+    example_grid = "000000000000003085001020000000507000004000100090000000500000073002010000000040009"
     print(len(example_grid))
-    sudoku = SudokuCSP(example_grid , logging = True)
+    sudoku = SudokuCSP(example_grid , logging = False)
     sudoku.print_sudoku()
     sudoku.solve()
     sudoku.print_sudoku()
