@@ -1,25 +1,15 @@
 import tkinter as tk
 import sys
 import time
+import const as const
 from tkinter import scrolledtext, messagebox  # Import for the log window
 from backend import SudokuCSP  # Adjust the import if the backend is named differently
+from Log import LogStream
 
 
 
-class LogStream:
-    def __init__(self, log_widget):
-        self.log_widget = log_widget
-        # self.log_file = log_file
-
-    def write(self, message):
-        self.log_widget.config(state='normal')
-        self.log_widget.insert(tk.END, message)
-        self.log_widget.yview(tk.END)
-        self.log_widget.config(state='disabled')
 
 
-    def flush(self):
-        pass  # Needed to avoid any errors when flushing the stream
 
 class SudokuGUI:
     def __init__(self, root, selected_mode,logging=False):
@@ -160,9 +150,12 @@ class SudokuGUI:
                  
     def on_closing(self):
         if tk.messagebox.askokcancel("Quit", "Are you sure you want to quit?"):
+            if hasattr(sys.stdout, 'stop'):
+                sys.stdout.stop()
             tk.messagebox.showinfo("Sudoku Solver", "Thank you for using the Sudoku Solver!")
             self.root.destroy()
             sys.exit(0)
+
     def create_log_window(self):
         self.log_window = tk.Toplevel(self.root)
         self.log_window.title("Log Window")
@@ -244,17 +237,13 @@ class SudokuGUI:
         if self.generated_puzzle!=None:
             puzzle_str = self.generated_puzzle
         else:
-            puzzle_str ="000000000000003085001020000000507000004001200090000000500000073002010000000040009" 
+            puzzle_str = const.MASTER_PUZZLE
         self.prefilled = self.board_from_string(puzzle_str)
         self.set_board(self.board_from_string(puzzle_str))
         
         if self.verify(mute_highlight=True) == False:
             return
-        # puzzle_str = "300000097007091000000300080600003015001802700730910002060009000070520400450000008"
         
-        # puzzle_str2= "000000064000476980045009002950004008000001350000003006500617820279508601010902073" 
-        # puzzle_str3= "000000000000003085001020000000507000004000100090000000500000073002010000000040009"
-        # Mark prefilled cells based on the string
         self.prefilled = self.board_from_string(puzzle_str)
 
         print("Board before solving:\n")
@@ -442,7 +431,7 @@ class SudokuGUI:
 def run_gui(mode,logging=False):
     root = tk.Tk()
     gui = SudokuGUI(root,selected_mode=mode,logging=logging)
-    sys.stdout = LogStream(gui.log_text)
+    sys.stdout = LogStream(gui.log_text,file="log_MASTER.txt", flush_interval=0.1)  # Redirect stdout to the log window
     
     # if log_to_file==True:
     #     sys.stdout = LogStream(gui.log_text)
@@ -450,6 +439,7 @@ def run_gui(mode,logging=False):
     if mode == 0:
         gui.solve_example()
     root.mainloop()
+    
     root.destroy()
     
-# run_gui(0)
+run_gui(0,True)
