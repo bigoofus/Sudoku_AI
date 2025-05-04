@@ -159,9 +159,10 @@ class SudokuGUI:
             self.clear_button.place(relx=0.86, rely=0.93, width=125, height=50, anchor='center')
                  
     def on_closing(self):
-        self.root.quit()
-        # self.root.destroy()
-        # sys.exit(0)        
+        if tk.messagebox.askokcancel("Quit", "Are you sure you want to quit?"):
+            tk.messagebox.showinfo("Sudoku Solver", "Thank you for using the Sudoku Solver!")
+            self.root.destroy()
+            sys.exit(0)
     def create_log_window(self):
         self.log_window = tk.Toplevel(self.root)
         self.log_window.title("Log Window")
@@ -171,7 +172,7 @@ class SudokuGUI:
         self.log_text = scrolledtext.ScrolledText(
             self.log_window,
             width=70, height=20,
-            font=('Arial', 14),
+            font=('Arial', 18),
             state='disabled'
         )
         self.log_text.pack(padx=10, pady=10, fill=tk.BOTH, expand=True)
@@ -217,20 +218,38 @@ class SudokuGUI:
                 entry = self.entries[i][j]
                 entry.config(state='normal')
                 entry.delete(0, tk.END)
-    def verify(self):
+    def verify(self,mute_highlight=False):
         board_str = self.get_current_board()
         csp=SudokuCSP(board_str,self.logging)
-        self.highlight_invalid_cells()
+        
+        
         if  not csp.is_valid_grid():
+            if mute_highlight==False:
+                self.highlight_invalid_cells()
             messagebox.showerror("Verification", "The Sudoku puzzle is invalid.")
-            
+            return False
+    def set_baord_allblack(self,puzzle_str):
+        for i in range(9):
+            for j in range(9):
+                val = puzzle_str[i * 9 + j]
+                if val != '0':
+                    entry = self.entries[i][j]
+                    entry.insert(0, val)
+                    entry.config(state='disabled', disabledforeground='black', font=('Teacher', 24, 'bold'))
+                    self.prefilled[i][j] = True
+                else:
+                    self.prefilled[i][j] = False     
     def solve_example(self):
         # self.clear_board()
         if self.generated_puzzle!=None:
             puzzle_str = self.generated_puzzle
         else:
-            puzzle_str ="000000000000003085001020000000507000004000100090000000500000073002010000000040009" 
-
+            puzzle_str ="000000000000003085001020000000507000004001200090000000500000073002010000000040009" 
+        self.prefilled = self.board_from_string(puzzle_str)
+        self.set_board(self.board_from_string(puzzle_str))
+        
+        if self.verify(mute_highlight=True) == False:
+            return
         # puzzle_str = "300000097007091000000300080600003015001802700730910002060009000070520400450000008"
         
         # puzzle_str2= "000000064000476980045009002950004008000001350000003006500617820279508601010902073" 
@@ -244,16 +263,7 @@ class SudokuGUI:
         print("\n\n\n")
 
         # Fill the GUI board
-        for i in range(9):
-            for j in range(9):
-                val = puzzle_str[i * 9 + j]
-                if val != '0':
-                    entry = self.entries[i][j]
-                    entry.insert(0, val)
-                    entry.config(state='disabled', disabledforeground='black', font=('Teacher', 24, 'bold'))
-                    self.prefilled[i][j] = True
-                else:
-                    self.prefilled[i][j] = False
+        
 
         print("Starting to solve Example puzzle...")
 
@@ -285,12 +295,15 @@ class SudokuGUI:
 
     def solve_user_input(self):
         puzzle = self.get_current_board()
+        if self.verify(mute_highlight=True) == False:
+            return
+        
 
         # Mark prefilled cells
         self.prefilled = self.board_from_string(puzzle)
 
         print("Board before solving:\n")
-        print(self.board_from_string(puzzle))
+        self.print_grid(self.board_from_string(puzzle))
         print("\n\n")
 
         print("Starting to solve user input puzzle...")
