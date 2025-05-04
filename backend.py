@@ -10,6 +10,12 @@ class SudokuCSP:
         self.arcs = self.create_arcs()
         self.initialize_domains()
         self.logging = logging
+        self.stats = {
+            'revised': 0,
+            'pruned': 0,
+            'singleton': 0,
+            'backtracks': 0
+        }
 
     def create_arcs(self):  #Function that create all possible arcs of the sudoko grid
         arcs = []
@@ -89,15 +95,12 @@ class SudokuCSP:
     def arc_consistency(self , queue = None):      #check arc consistency of all our arcs
         if not queue:
             queue = self.arcs.copy()
-        
-        revisions = 0
-        pruned = 0
 
         while queue:
             Xi, Xj = queue.pop(0)
             dom_copy = self.domains[Xi]
 
-            revised, pruned_now = self.revise(Xi, Xj)
+            pruned_now = self.revise(Xi, Xj)
 
             if len(self.domains[Xi]) == 0:
                 if self.logging:
@@ -109,11 +112,9 @@ class SudokuCSP:
                 value = next(iter(self.domains[Xi]))
                 i, j =  Xi
                 self.set_grid_val(i , j , value)
+                self.stats['singleton'] += 1
                 if self.logging:
                     print(f"Variable {Xi} became singleton with value {value}")
-            
-            revisions += revised
-            pruned += pruned_now
 
             if pruned_now:
                 for Xk in self.get_neighbors(Xi):
@@ -123,13 +124,12 @@ class SudokuCSP:
         return True        
 
     def revise(self, Xi, Xj):   #apply arc consistency of an arc
-        revised = 0
-        pruned = 0
-
         domain_i = self.domains[Xi]
         domain_j = self.domains[Xj]
 
-        revised += 1
+        prune_occured = False
+
+        self.stats['revised'] += 1
         if self.logging:
             print(f"\nRevising arc {Xi} -> {Xj}")
             print(f"Current domain of {Xi}: {domain_i}")
@@ -143,13 +143,14 @@ class SudokuCSP:
         for x in to_remove:
             if self.logging:
                 print(f"Removed {x} from {Xi} due to lack of support in {Xj}")
+            self.stats['pruned'] += 1
+            prune_occured = True
             self.domains[Xi] = self.domains[Xi].replace(str(x) , "")
-            pruned += 1
 
         if(to_remove and self.logging):
             print(f"Updated domain of {Xi}: {self.domains[Xi]}")
 
-        return revised, pruned
+        return prune_occured
 
     def get_neighbors(self, var):       #get all neighbor variables of a variable
         r, c = var
@@ -244,6 +245,7 @@ class SudokuCSP:
                     if self.arc_consistency(queue = affected):
 
                         if self.backtrack_ac3():
+                            self.stats['backtracks'] += 1
                             return True
                 
             self.set_grid_val(row , col , 0)
@@ -265,9 +267,15 @@ class SudokuCSP:
         if not self.backtrack_ac3():
             print('\n\nERROR: Sudoku board is not solvable')
             return False
+        
+        print('\n')
+        print('Number of Total Revisions that occured: ' + str(self.stats['revised']))
+        print('Number of Pruned Domains: ' + str(self.stats['pruned']))
+        print('Number of Singleton Assignments: ' + str(self.stats['singleton']))
+        print('Number of Backtracks that occured: ' + str(self.stats['backtracks']))
 
     def print_sudoku(self):
-        print('\n\n')
+        print('\n')
         for i in range(9):
             row = self.grid[i*9:(i+1)*9]
             formatted = " ".join(row[j] if row[j] != '0' else '.' for j in range(9))
@@ -314,7 +322,7 @@ class SudokuCSP:
 
 # Example usage
 if __name__ == "__main__":
-    example_grid = "300000000000003085001020000000507000004000100090000000500000073002010000000040009"
+    example_grid = "029000000000600090000740102907000003030807010050093027206430801080000300040900000"
     print(len(example_grid))
     sudoku = SudokuCSP(example_grid , logging = False)
     sudoku.print_sudoku()
