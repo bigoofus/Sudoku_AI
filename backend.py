@@ -256,9 +256,15 @@ class SudokuCSP:
         return False
 
     def solve(self):
+        if not self.is_valid_grid():
+            print('\n\nERROR: Sudoku board is not valid')
+            return False
+        
         self.arc_consistency()
+
         if not self.backtrack_ac3():
-            print('\n\nERROR: Sudoku board is not solvable\n\n')
+            print('\n\nERROR: Sudoku board is not solvable')
+            return False
 
     def print_sudoku(self):
         print('\n\n')
@@ -308,7 +314,7 @@ class SudokuCSP:
 
 # Example usage
 if __name__ == "__main__":
-    example_grid = "000000000000003085001020000000507000004000100090000000500000073002010000000040009"
+    example_grid = "300000000000003085001020000000507000004000100090000000500000073002010000000040009"
     print(len(example_grid))
     sudoku = SudokuCSP(example_grid , logging = False)
     sudoku.print_sudoku()
