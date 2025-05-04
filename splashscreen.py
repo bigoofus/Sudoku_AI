@@ -9,7 +9,7 @@ def startscreen():
 
     # Constants
     SCREEN_WIDTH = 800
-    SCREEN_HEIGHT = 600
+    SCREEN_HEIGHT = 700
     WHITE = (255, 255, 255)
     BLACK = (0, 0, 0)
     GRAY = (200, 200, 200)
@@ -34,7 +34,7 @@ def startscreen():
     logging = False
 
     # Buttons
-    button_texts = ["AI Solving Example puzzle", "Input your puzzle", "Generate Puzzle"]
+    button_texts = ["AI Solving Example puzzle", "Input your puzzle", "Generate Puzzle","Generate and Try to solve!!!!"]
     buttons = []
     button_width = 450
     button_height = 50
@@ -103,8 +103,10 @@ def startscreen():
         selected_mode = 0
     elif selected_mode == "Input your puzzle":
             selected_mode = 1
-    else:
+    elif selected_mode == "Generate Puzzle":
         selected_mode = 2
+    else:
+        selected_mode = 3
     
 
     print(f"Selected Mode: {selected_mode}")
@@ -112,6 +114,8 @@ def startscreen():
     print(f"logging: {logging}")
     pygame.quit()
     return selected_mode, logging
+
+
 
 
 

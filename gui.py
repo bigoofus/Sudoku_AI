@@ -24,6 +24,7 @@ class LogStream:
 class SudokuGUI:
     def __init__(self, root, selected_mode,logging=False):
         self.root = root
+        self.selected_mode = selected_mode
         self.root.title("Sudoku Solver")
         if selected_mode != 0:
             self.root.geometry("600x700")
@@ -43,39 +44,41 @@ class SudokuGUI:
         self.generated_puzzle = None
         self.generated_empty_spaces = 40  # Default value
         self.root.protocol("WM_DELETE_WINDOW", self.on_closing)
+        self.mode_1_setup(selected_mode)
+        self.mode_2_setup(selected_mode)
+        self.mode_3_setup(selected_mode)
 
-        if selected_mode == 1:
-            # Solve Button
-            self.solve_button = tk.Button(
-                root, text="Solve",
-                command=self.solve_user_input,
-                font=('Teacher', 40, 'bold'),
-                bg='lightgreen', fg='black',
-                activebackground='#90ee90',
-                relief='ridge', bd=4,
-                highlightthickness=0
-            )
-            self.solve_button.place(relx=0.35, rely=0.93, width=150, height=50, anchor='center')
+            
+    def mode_1_setup(self,selected_mode):
+            if selected_mode == 1:
+                # Solve Button
+                self.solve_button = tk.Button(
+                    self.root, text="Solve",
+                    command=self.solve_user_input,
+                    font=('Teacher', 40, 'bold'),
+                    bg='lightgreen', fg='black',
+                    activebackground='#90ee90',
+                    relief='ridge', bd=4,
+                    highlightthickness=0
+                )
+                self.solve_button.place(relx=0.35, rely=0.93, width=150, height=50, anchor='center')
 
-            # Clear Button
-            self.clear_button = tk.Button(
-                root, text="Clear",
-                command=self.clear_board,
-                font=('Teacher', 40, 'bold'),
-                bg='tomato', fg='white',
-                activebackground='red',
-                relief='ridge', bd=4,
-                highlightthickness=0
-            )
-            self.clear_button.place(relx=0.65, rely=0.93, width=150, height=50, anchor='center')
-
+                # Clear Button
+                self.clear_button = tk.Button(
+                    self.root, text="Clear",
+                    command=self.clear_board,
+                    font=('Teacher', 40, 'bold'),
+                    bg='tomato', fg='white',
+                    activebackground='red',
+                    relief='ridge', bd=4,
+                    highlightthickness=0
+                )
+                self.clear_button.place(relx=0.65, rely=0.93, width=150, height=50, anchor='center')
+    def mode_2_setup(self,selected_mode):
         if selected_mode == 2:
-            
-            
-
             # Entry box for empty cells
             self.empty_entry = tk.Entry(
-                root, font=('Teacher', 20),
+                self.root, font=('Teacher', 20),
                 justify='center',
     
             )
@@ -84,7 +87,7 @@ class SudokuGUI:
 
             # Generate Button
             self.generate_button = tk.Button(
-                root, text="Generate",
+                self.root, text="Generate",
                 command=self.on_generate_clicked,
                 font=('Teacher', 35, 'bold'),
                 bg='lightblue', fg='black',
@@ -94,7 +97,7 @@ class SudokuGUI:
 
             # Solve Button
             self.solve_button = tk.Button(
-                root, text="Solve",
+                self.root, text="Solve",
                 command=self.solve_generated,
                 font=('Teacher', 35, 'bold'),
                 bg='lightgreen', fg='black',
@@ -105,7 +108,7 @@ class SudokuGUI:
 
             # Clear Button
             self.clear_button = tk.Button(
-                root, text="Clear",
+                self.root, text="Clear",
                 command=self.clear_board,
                 font=('Teacher', 35, 'bold'),
                 bg='tomato', fg='white',
@@ -113,9 +116,48 @@ class SudokuGUI:
 
             )
             self.clear_button.place(relx=0.86, rely=0.93, width=125, height=50, anchor='center')
+    def mode_3_setup(self,selected_mode):
+        if selected_mode == 3:
+            self.empty_entry = tk.Entry(
+                self.root, font=('Teacher', 20),
+                justify='center',
+    
+            )
+            self.empty_entry.place(relx=0.06, rely=0.93, width=60, height=50, anchor='center')
+            self.empty_entry.insert(0, str(self.generated_empty_spaces))
 
-            # Log window
-        
+            # Generate Button
+            self.generate_button = tk.Button(
+                self.root, text="Generate",
+                command=self.on_generate_clicked,
+                font=('Teacher', 35, 'bold'),
+                bg='lightblue', fg='black',
+                activebackground='#add8e6',
+            )
+            self.generate_button.place(relx=0.30, rely=0.93, width=220, height=50, anchor='center')
+
+            # Verify Button
+            self.solve_button = tk.Button(
+                self.root, text="Verify",
+                command=self.verify,
+                font=('Teacher', 35, 'bold'),
+                bg='lightgreen', fg='black',
+                activebackground='#90ee90',
+
+            )
+            self.solve_button.place(relx=0.62, rely=0.93, width=150, height=50, anchor='center')
+
+            # Clear Button
+            self.clear_button = tk.Button(
+                self.root, text="Clear",
+                command=self.clear_board,
+                font=('Teacher', 35, 'bold'),
+                bg='tomato', fg='white',
+                activebackground='red',
+
+            )
+            self.clear_button.place(relx=0.86, rely=0.93, width=125, height=50, anchor='center')
+                 
     def on_closing(self):
         self.root.quit()
         # self.root.destroy()
@@ -134,6 +176,7 @@ class SudokuGUI:
         )
         self.log_text.pack(padx=10, pady=10, fill=tk.BOTH, expand=True)
         return self.log_text  # <-- ADD THIS
+    
     def on_generate_clicked(self):
         try:
             value = int(self.empty_entry.get())
@@ -174,7 +217,13 @@ class SudokuGUI:
                 entry = self.entries[i][j]
                 entry.config(state='normal')
                 entry.delete(0, tk.END)
-
+    def verify(self):
+        board_str = self.get_current_board()
+        csp=SudokuCSP(board_str,self.logging)
+        self.highlight_invalid_cells()
+        if  not csp.is_valid_grid():
+            messagebox.showerror("Verification", "The Sudoku puzzle is invalid.")
+            
     def solve_example(self):
         # self.clear_board()
         if self.generated_puzzle!=None:
@@ -231,14 +280,14 @@ class SudokuGUI:
             for j in range(9):
                 val = self.entries[i][j].get()
                 board_str += val if val.isdigit() else '0'
-        print( "Current board string:", board_str)
+        # print( "Current board string:", board_str)
         return board_str
 
     def solve_user_input(self):
         puzzle = self.get_current_board()
 
         # Mark prefilled cells
-        self.prefilled = [[puzzle[i * 9 + j] != '0' for j in range(9)] for i in range(9)]
+        self.prefilled = self.board_from_string(puzzle)
 
         print("Board before solving:\n")
         print(self.board_from_string(puzzle))
@@ -295,14 +344,80 @@ class SudokuGUI:
     def update_log(self, message):
         self.log_text.insert(tk.END, message + "\n")
         self.log_text.yview(tk.END)  # Auto-scroll to the latest message
-    
+    def set_mode3_board(self, board):
+        for i in range(9):
+            for j in range(9):
+                entry = self.entries[i][j]
+                entry.config(state='normal')  # Allow editing for now to update the value
+                entry.delete(0, tk.END)
+                if board[i][j] != 0:
+                    entry.insert(0, str(board[i][j]))
+                    if hasattr(self, 'prefilled') and not self.prefilled[i][j]:
+                        entry.config(fg='blue', font=('Teacher', 30, 'bold'))  # Solved cells
+                    else:
+                        entry.config(fg='black', font=('Teacher', 30, 'bold'))  # Pre-filled cells
+                else:
+                    entry.config(fg='blue', font=('Teacher', 30, 'bold'))  # Empty cells
+                
+                # Lock prefilled cells again after solving
+                if hasattr(self, 'prefilled') and self.prefilled[i][j]:
+                    entry.config(state='disabled', disabledforeground='black')
+                
+    def highlight_invalid_cells(self):
+        grid = [[self.entries[i][j].get() for j in range(9)] for i in range(9)]
+
+        for i in range(9):
+            for j in range(9):
+                entry = self.entries[i][j]
+                val = grid[i][j]
+
+                if not val.isdigit() or val == '0':
+                    continue
+
+                current_color = entry.cget('fg')
+
+                # Temporarily clear the cell to avoid self-check conflict
+                grid[i][j] = '0'
+                is_valid = self.is_valid_placement(grid, int(val), i, j)
+                grid[i][j] = val
+
+                if current_color == 'blue' and not is_valid:
+                    entry.config(fg='red')
+                elif current_color == 'red' and is_valid:
+                    entry.config(fg='blue')   
+
+    def is_valid_placement(self, grid, num, row, col):
+        num_str = str(num)
+
+        # Check row
+        if num_str in grid[row]:
+            return False
+
+        # Check column
+        for i in range(9):
+            if grid[i][col] == num_str:
+                return False
+
+        # Check 3x3 box
+        start_row, start_col = 3 * (row // 3), 3 * (col // 3)
+        for i in range(3):
+            for j in range(3):
+                if grid[start_row + i][start_col + j] == num_str:
+                    return False
+
+        return True              
     def generate(self,value):
         from suduko_generator import generate_sudoku_string
         puzzle_string=generate_sudoku_string(k=value)
         self.prefilled = self.board_from_string(puzzle_string)
         grid_2d = self.board_from_string(puzzle_string)
-        self.set_board(grid_2d)
+        if(self.selected_mode==3):
+            self.set_mode3_board(grid_2d)
+        else:
+            self.set_board(grid_2d)
+        
         self.generated_puzzle=puzzle_string
+        
       
         
         
@@ -321,11 +436,6 @@ def run_gui(mode,logging=False):
         
     if mode == 0:
         gui.solve_example()
-    elif mode == 1:
-        # gui.input_puzzle()
-        pass
-    else:
-        pass
     root.mainloop()
     root.destroy()
     
